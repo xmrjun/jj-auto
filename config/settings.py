@@ -55,31 +55,41 @@ QSS_PATH = os.path.join(RESOURCE_DIR, 'ui', 'ui.qss')
 GAMES_DIR = os.path.join(RESOURCE_DIR, 'config', 'games')
 
 
+def _runtime_model_filename(directory: str) -> str | None:
+    """返回目录中优先使用的安全运行模型文件名。"""
+    for filename in ("best.onnx", "best.engine"):
+        if os.path.isfile(os.path.join(directory, filename)):
+            return filename
+    return None
+
+
 def _scan_model_dirs() -> list[str]:
-    """扫描 yolo/weights/ 下的子目录，返回包含 best.pt 的子目录名列表。"""
+    """扫描包含 ONNX/TensorRT 运行制品的模型子目录。"""
     dirs: list[str] = []
     if not os.path.isdir(YOLO_WEIGHTS_DIR):
         return dirs
     for name in sorted(os.listdir(YOLO_WEIGHTS_DIR)):
         sub = os.path.join(YOLO_WEIGHTS_DIR, name)
-        if os.path.isdir(sub) and os.path.isfile(os.path.join(sub, 'best.pt')):
+        if os.path.isdir(sub) and _runtime_model_filename(sub) is not None:
             dirs.append(name)
     return dirs
 
 
 def _resolve_model_path(model_name: str | None) -> str:
-    """根据模型名称解析 best.pt 的完整路径。
+    """根据模型名称解析安全运行制品的完整路径。
 
-    - model_name 为子目录名 → yolo/weights/<model_name>/best.pt
-    - model_name 为 None → 使用第一个可用子目录的 best.pt
+    - model_name 为子目录名 → 优先使用 best.onnx，其次 best.engine
+    - model_name 为 None → 使用第一个可用运行模型目录
     - 所有模型必须放在 yolo/weights/ 的子目录中。
     """
     if model_name:
-        return os.path.join(YOLO_WEIGHTS_DIR, model_name, 'best.pt')
+        directory = os.path.join(YOLO_WEIGHTS_DIR, model_name)
+        return os.path.join(directory, _runtime_model_filename(directory) or "best.onnx")
     dirs = _scan_model_dirs()
     if dirs:
-        return os.path.join(YOLO_WEIGHTS_DIR, dirs[0], 'best.pt')
-    return os.path.join(YOLO_WEIGHTS_DIR, 'default', 'best.pt')
+        directory = os.path.join(YOLO_WEIGHTS_DIR, dirs[0])
+        return os.path.join(directory, _runtime_model_filename(directory) or "best.onnx")
+    return os.path.join(YOLO_WEIGHTS_DIR, 'default', 'best.onnx')
 
 
 def _scan_game_configs() -> list[str]:

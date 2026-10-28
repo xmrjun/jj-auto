@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "runtime_policy": {
+    "allowed_formats": [
+      "onnx",
+      "engine"
+    ],
+    "allow_unlisted": false,
+    "allow_pt_fallback": false
+  },
+  "artifacts": [
+    {
+      "path": "external-samples/m.pt",
+      "format": "pt",
+      "sha256": "a29f4f41a8a7b6e6a3544e93f2506a2b2f45b94bcf6fd301a6440ddee4567d56",
+      "approved_for_runtime": false,
+      "note": "用户提供的未审查样本，仅记录哈希；未复制到仓库。"
+    },
+    {
+      "path": "external-samples/n.pt",
+      "format": "pt",
+      "sha256": "859cb27960221cc4a4de7c8b048a32b5e93d1792ae42b597eaeab76601ca052e",
+      "approved_for_runtime": false,
+      "note": "用户提供的未审查样本，仅记录哈希；未复制到仓库。"
+    },
+    {
+      "path": "external-samples/s.pt",
+      "format": "pt",
+      "sha256": "e2419bb59102168fde02324fe6981a583e4300c524645897c967f521605397b7",
+      "approved_for_runtime": false,
+      "note": "用户提供的未审查样本，仅记录哈希；未复制到仓库。"
+    }
+  ]
+}

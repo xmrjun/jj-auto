@@ -3,7 +3,6 @@
 仅负责加载模型与执行纯视觉推理，返回原始 YOLO 结果对象和耗时。
 """
 
-import os
 import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Tuple, cast
@@ -14,6 +13,7 @@ from ultralytics import YOLO
 
 import config.settings as settings
 from core.frame_packing import Detection
+from core.model_assets import resolve_runtime_model
 from config.packing_profile import PACKED_INPUT_SIZE
 
 if TYPE_CHECKING:
@@ -44,16 +44,16 @@ class YoloInferencer:
         self._full_input_size: int | list[int] | tuple[int, int] | None = None
 
     def __load_model(self) -> Tuple[YOLO, str]:
-        """按现有设备设置加载本地模型。
+        """校验清单和哈希后加载安全格式的本地模型。
 
         Returns:
             模型与实际设备名称。
         Raises:
-            FileNotFoundError: 本地权重不存在。
-            Exception: 最终回退的 PyTorch 模型也无法加载。
+            ModelAssetError: 模型未批准、格式不安全或哈希不一致。
+            RuntimeError: TensorRT 模型与设备选择不兼容或模型加载失败。
         """
-        if not os.path.exists(self.weight_path):
-            raise FileNotFoundError(f"未找到本地模型文件: {self.weight_path}。请确认打包时包含 yolo/weights/best.pt。")
+        selected = resolve_runtime_model(self.weight_path)
+        self.weight_path = str(selected.path)
 
         device_choice = settings.DEVICE_CHOICE
         print(f"[YoloInferencer] 当前设备选择: {device_choice}")
@@ -62,88 +62,14 @@ class YoloInferencer:
         if device_choice == "cuda" and not use_gpu:
             print("[YoloInferencer] 警告: 用户选择了GPU，但CUDA不可用，回退到CPU")
 
-        weights_dir = os.path.dirname(self.weight_path)
+        if selected.format == "engine" and not use_gpu:
+            raise RuntimeError("TensorRT .engine 模型需要可用的 CUDA 设备")
 
-        if use_gpu:
-            engine_path = os.path.join(weights_dir, "best.engine")
-            model = self.__load_tensorrt(engine_path)
-            if model is not None:
-                return model, "cuda"
-            print("[YoloInferencer] TensorRT 不可用，使用 PyTorch CUDA + FP16")
+        try:
             model = YOLO(self.weight_path)
-            model.to("cuda")
-            return model, "cuda"
-        else:
-            onnx_path = os.path.join(weights_dir, "best.onnx")
-            model = self.__load_onnx(onnx_path)
-            if model is not None:
-                return model, "cpu"
-            print("[YoloInferencer] ONNX Runtime 不可用，使用 PyTorch CPU")
-            model = YOLO(self.weight_path)
-            model.to("cpu")
-            return model, "cpu"
-
-    def __load_tensorrt(self, engine_path: str) -> YOLO | None:
-        """尝试现有 TensorRT 路线。
-
-        Args:
-            engine_path: 本地引擎路径。
-        Returns:
-            已加载的模型；依赖、导出或加载失败时为 None，由上层回退。
-        """
-        try:
-            import tensorrt  # noqa: F401
-        except ImportError:
-            print("[YoloInferencer] 未安装 tensorrt，跳过 TensorRT 加速")
-            return None
-
-        if os.path.exists(engine_path):
-            print(f"[YoloInferencer] 加载已有 TensorRT 引擎: {engine_path}")
-            try:
-                return YOLO(engine_path)
-            except Exception as e:
-                print(f"[YoloInferencer] 加载 TensorRT 引擎失败: {e}，将重新导出")
-
-        print("[YoloInferencer] 正在导出 TensorRT 引擎（FP16），首次导出可能需要几分钟...")
-        try:
-            pt_model = YOLO(self.weight_path)
-            pt_model.export(format="engine", half=True)
-            print(f"[YoloInferencer] TensorRT 引擎导出完成: {engine_path}")
-            return YOLO(engine_path)
-        except Exception as e:
-            print(f"[YoloInferencer] TensorRT 导出失败: {e}")
-            return None
-
-    def __load_onnx(self, onnx_path: str) -> YOLO | None:
-        """尝试现有 ONNX 路线。
-
-        Args:
-            onnx_path: 本地导出模型路径。
-        Returns:
-            已加载的模型；依赖、导出或加载失败时为 None，由上层回退。
-        """
-        try:
-            import onnxruntime  # noqa: F401
-        except ImportError:
-            print("[YoloInferencer] 未安装 onnxruntime，跳过 ONNX Runtime 加速")
-            return None
-
-        if os.path.exists(onnx_path):
-            print(f"[YoloInferencer] 加载已有 ONNX 模型: {onnx_path}")
-            try:
-                return YOLO(onnx_path)
-            except Exception as e:
-                print(f"[YoloInferencer] 加载 ONNX 模型失败: {e}，将重新导出")
-
-        print("[YoloInferencer] 正在导出 ONNX 模型，首次导出可能需要几十秒...")
-        try:
-            pt_model = YOLO(self.weight_path)
-            pt_model.export(format="onnx")
-            print(f"[YoloInferencer] ONNX 模型导出完成: {onnx_path}")
-            return YOLO(onnx_path)
-        except Exception as e:
-            print(f"[YoloInferencer] ONNX 导出失败: {e}")
-            return None
+        except Exception as exc:
+            raise RuntimeError(f"安全模型加载失败: {selected.path.name}: {exc}") from exc
+        return model, "cuda" if use_gpu else "cpu"
 
     def detect(self, img: Image.Image | None) -> Tuple[object, float]:
         """执行纯粹的 YOLO 推理。

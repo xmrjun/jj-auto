@@ -27,7 +27,7 @@ A Windows Dou Dizhu card counter and playing-card detection application built wi
 
 - 当前功能以 `main` 源码与 [更新记录](CHANGELOG.md) 为准。
 - [Releases](https://github.com/hey-three/han-card-tracker/releases) 中目前可见的是历史 `v2.3` 压缩包；它不代表当前 V4.3.2 源码已打包。此状态于2026-10-27核对。
-- YOLO 权重位于仓库 `yolo/weights/<模型目录>/best.pt`。训练代码在独立的 [yolo-for-han-card-tracker](https://github.com/hey-three/yolo-for-han-card-tracker) 仓库；不把旧版发布包描述成已提供训练数据集。
+- 正式运行模型位于 `yolo/weights/<模型目录>/best.onnx`（或经批准的 `best.engine`），并且必须登记在 `security/model-manifest.json` 且通过 SHA-256 校验。`.pt` 只允许在隔离的转换流程中使用，运行程序不会加载或自动回退到 `.pt`。训练代码在独立的 [yolo-for-han-card-tracker](https://github.com/hey-three/yolo-for-han-card-tracker) 仓库。
 
 ## 从源码启动
 

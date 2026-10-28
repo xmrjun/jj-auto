@@ -33,7 +33,7 @@ python main.py
 
 `requirements/base.txt` is shared by Mac development and Windows runtime, while `requirements/windows.txt` contains Windows-only capture, input, and packaging dependencies. The base set no longer forces a CUDA wheel. On an NVIDIA Windows machine, select the wheel matching the installed driver from the [official PyTorch installer](https://pytorch.org/get-started/locally/). [Installation details](docs/使用指南.md) are maintained in Chinese.
 
-Weights are stored in `yolo/weights/<model-name>/best.pt`. Custom models must preserve the configured class mapping. The [training project](https://github.com/hey-three/yolo-for-han-card-tracker) is maintained separately.
+Runtime models live at `yolo/weights/<model-name>/best.onnx` (or an approved `best.engine`) and must be listed in `security/model-manifest.json` with a matching SHA-256. The application never loads or silently falls back to `.pt`; those files are restricted to an isolated conversion workflow. The [training project](https://github.com/hey-three/yolo-for-han-card-tracker) is maintained separately.
 
 ## First use
 

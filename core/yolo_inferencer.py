@@ -3,13 +3,26 @@
 仅负责加载模型与执行纯视觉推理，返回原始 YOLO 结果对象和耗时。
 """
 
+import os
 import time
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Tuple, cast
 
+# 必须在导入 ultralytics 之前设置：禁止自动 pip 安装依赖、禁止联网检查与匿名统计。
+os.environ.setdefault("YOLO_AUTOINSTALL", "false")
+os.environ.setdefault("YOLO_OFFLINE", "true")
+
 import torch
 from PIL import Image
 from ultralytics import YOLO
+
+try:
+    from ultralytics import settings as _ultralytics_settings
+
+    if _ultralytics_settings.get("sync", False):
+        _ultralytics_settings.update({"sync": False})
+except Exception:  # 统计开关失败不影响离线推理，YOLO_OFFLINE 仍阻止联网。
+    pass
 
 import config.settings as settings
 from core.frame_packing import Detection

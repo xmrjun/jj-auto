@@ -7,14 +7,19 @@ from copy import deepcopy
 from multiprocessing.queues import Queue
 import queue
 import traceback
+from typing import TYPE_CHECKING
 
 from core.inference_protocol import Command, Response
 from core.diagnostics import DiagnosticRecorder
+
+if TYPE_CHECKING:
+    from automation.emergency_stop import EventLike
 
 
 def run_controller_loop(
     cmd_queue: Queue[Command | None], result_queue: Queue[Response],
     layout_name: str, game_name: str, snapshot: Mapping[str, object],
+    stop_event: "EventLike | None" = None,
 ) -> None:
     """执行命令并为每条命令回传独立结果，禁止操作 Qt 对象。
 
@@ -24,6 +29,7 @@ def run_controller_loop(
         layout_name: 初始布局名。
         game_name: 初始游戏名。
         snapshot: 主进程确认过的配置快照。
+        stop_event: 与 UI 共享的紧急停止事件；None 时自动化使用进程内事件。
     """
     recorder: DiagnosticRecorder | None = None
 
@@ -47,6 +53,7 @@ def run_controller_loop(
         recorder = DiagnosticRecorder(settings.BASE_DIR, notify)
         controller = GameController(game_name, layout_name)
         controller.attach_diagnostics(recorder)
+        controller.automation_stop_event = stop_event
     except Exception:
         if recorder is not None:
             recorder.daily.write('startup_failed', error=traceback.format_exc())
@@ -79,10 +86,12 @@ def run_controller_loop(
                         screenshot_regions=deepcopy(controller.last_screenshot_regions),
                         performance=deepcopy(performance) if isinstance(performance, dict) else None,
                         diagnostic_status=recorder.status(),
+                        automation_status=deepcopy(controller.automation_status),
                     )
                 else:
                     controller.execute_command(command.name, command.payload)
-                    response = Response("ok", command.request_id, command.generation)
+                    response = Response("ok", command.request_id, command.generation,
+                                        automation_status=deepcopy(controller.automation_status))
             except Exception:
                 response = Response(
                     "error", command.request_id, command.generation,
@@ -100,4 +109,5 @@ def run_controller_loop(
                 notify(recorder.status())
 
     finally:
+        controller.close_automation()
         recorder.close()

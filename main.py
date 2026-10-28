@@ -1,5 +1,10 @@
+import os
 import sys
 import multiprocessing
+
+# 子进程继承环境变量：ultralytics 不自动安装依赖、不联网检查或上报统计。
+os.environ.setdefault("YOLO_AUTOINSTALL", "false")
+os.environ.setdefault("YOLO_OFFLINE", "true")
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFont
 from PySide6.QtCore import qInstallMessageHandler

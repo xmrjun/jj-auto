@@ -1,0 +1,35 @@
+# JJ 斗地主按钮模板。模板图片不随仓库分发，放在 template_dir 中：
+#   1. 从你自己的 JJ 窗口截图裁剪按钮（python -m utils.button_templates capture），或
+#   2. 从你本地的 jjdouzeroAuto 克隆导入（python -m utils.button_templates import-jjdouzero <路径>）。
+# 缺少的模板只会让对应功能不可用，不影响记牌。
+
+template_dir: config/jj_buttons
+# 截取模板时 JJ 窗口截图的宽度（像素）；窗口变大/变小时按比例缩放模板
+reference_width: 1280
+# 模板匹配最低相似度（0~1）
+threshold: 0.8
+# 次优匹配与最优匹配相差小于该值视为歧义，不点击
+ambiguity_margin: 0.03
+# 匹配前把截图缩小到该比例，降低耗时
+match_scale: 0.5
+
+# region 为搜索区域，按窗口宽高归一化：[左, 上, 右, 下]
+buttons:
+  play:          {file: play.png,          region: [0.05, 0.40, 0.95, 0.80]}  # 出牌
+  pass:          {file: pass.png,          region: [0.05, 0.40, 0.95, 0.80]}  # 不出
+  cannot_beat:   {file: cannot_beat.png,   region: [0.05, 0.40, 0.95, 0.80]}  # 要不起
+  bid_pass:      {file: bid_pass.png,      region: [0.05, 0.40, 0.95, 0.80]}  # 不叫
+  bid_1:         {file: bid_1.png,         region: [0.05, 0.40, 0.95, 0.80]}  # 1分
+  bid_2:         {file: bid_2.png,         region: [0.05, 0.40, 0.95, 0.80]}  # 2分
+  bid_3:         {file: bid_3.png,         region: [0.05, 0.40, 0.95, 0.80]}  # 3分
+  call_landlord: {file: call_landlord.png, region: [0.05, 0.40, 0.95, 0.80]}  # 叫地主（叫抢模式）
+  no_call:       {file: no_call.png,       region: [0.05, 0.40, 0.95, 0.80]}  # 不叫（叫抢模式）
+  rob_landlord:  {file: rob_landlord.png,  region: [0.05, 0.40, 0.95, 0.80]}  # 抢地主
+  no_rob:        {file: no_rob.png,        region: [0.05, 0.40, 0.95, 0.80]}  # 不抢
+  double:        {file: double.png,        region: [0.05, 0.40, 0.95, 0.80]}  # 加倍
+  no_double:     {file: no_double.png,     region: [0.05, 0.40, 0.95, 0.80]}  # 不加倍
+  continue:      {file: continue.png,      region: [0.35, 0.70, 0.95, 1.00]}  # 继续游戏/再来一局
+  # 以下出现时只暂停，不会点击
+  trusteeship:   {file: trusteeship.png,   region: [0.30, 0.75, 0.75, 1.00]}  # 托管中/取消托管
+  confirm:       {file: confirm.png,       region: [0.25, 0.45, 0.75, 0.80]}  # 确认类弹窗
+  dialog:        {file: dialog.png,        region: [0.25, 0.50, 0.55, 0.75]}  # 其他弹窗

@@ -21,6 +21,8 @@ from core.games.doudizhu import DoudizhuTracker
 from core.packed_pipeline import PackedPipeline
 
 if TYPE_CHECKING:
+    from automation.emergency_stop import EventLike
+    from automation.runtime import AutomationRuntime
     from core.yolo_inferencer import YoloInferencer
 from core.layout_analyzer import LayoutAnalyzer
 from core.games import create_tracker
@@ -47,6 +49,9 @@ class GameController:
         last_screenshot_regions: 为旧预览协议保留的空区域字典。
         packed_pipeline: 同步单帧拼图执行器，处理切口保护和整图回退。
         last_performance: 当前子进程阶段耗时快照，经过回执传回 UI。
+        automation: 观察/自动模式运行时；首次开启前为 None。
+        automation_status: 最近一次自动化状态，随回执传回 UI。
+        automation_stop_event: 进程入口注入的 UI 共享紧急停止事件。
     """
 
     def __init__(self, game_name: str, layout_name: str | None = None) -> None:
@@ -80,6 +85,9 @@ class GameController:
         self.diagnostics: DiagnosticRecorder | None = None
         self.request_context = (0, 0)
         self._diagnostic_round = 0
+        self.automation: AutomationRuntime | None = None
+        self.automation_status: dict[str, object] | None = None
+        self.automation_stop_event: EventLike | None = None
 
     def attach_diagnostics(self, recorder: DiagnosticRecorder) -> None:
         """由进程入口注入诊断服务，独立控制器测试不向真实目录写日志。
@@ -216,10 +224,15 @@ class GameController:
         names: list[str] = []
         regions = None
         scales = None
+        runtime = getattr(self, "automation", None)
+        automating = runtime is not None and runtime.active
         if not isinstance(self.layout_analyzer, AutoLayoutAnalyzer):
             names, selected = stage_selection(self.layout_config["layout"],
                                                 self.tracker.state == settings.STARTED_RECORD_CARD)
-            if settings.PACKED_INFERENCE:
+            if automating:
+                # 自动化每帧都需要手牌位置，改用整图识别全部五区。
+                names = list(self.layout_config["layout"])
+            elif settings.PACKED_INFERENCE:
                 regions = selected
                 if img is not None:
                     scales = self.packed_pipeline.scale_weights(img.size, self.layout_config['layout'], names)
@@ -267,11 +280,17 @@ class GameController:
             self.layout_analyzer.wait_for_next_round(self.tracker.round_end_reason)
             self.packed_pipeline.reset()
         zone_cards: dict[str, list[list[str]]] = self._format_zone_cards(show_cards)
+        automation_ms: dict[str, float] = {}
+        if automating:
+            automation_started = time.perf_counter()
+            self._run_automation(img, valid_frame, region_boxes, known_regions or set(), show_cards)
+            automation_ms["automation_ms"] = (time.perf_counter()-automation_started)*1000
         finished = time.perf_counter()
         self.last_performance = dict(self.packed_pipeline.timings)
         self.last_performance.update(capture_ms=(captured-started)*1000, model_ms=yolo_ms,
                                      preview_ms=preview_ms,
                                      layout_save_ms=(finished-detected)*1000-preview_ms, pipeline_ms=(finished-started)*1000)
+        self.last_performance.update(automation_ms)
         if settings.DEBUG_MODE:
             print(f"[V4.3] {self.packed_pipeline.route} {self.last_performance}")
         if trace and not trace.cancelled:
@@ -286,8 +305,71 @@ class GameController:
                 trace.cancel()
         return remain_cards, zone_cards, yolo_ms
 
+    def _run_automation(self, img: object, valid: bool, region_boxes: Mapping[str, list[dict[str, object]]],
+                        known: set[str], show_cards: Mapping[str, list[list[str]]]) -> None:
+        """把本帧结果交给自动化；自动化异常只暂停自动化，不改变记牌结果。
+
+        Args:
+            img: 原始截图。
+            valid: 本帧截图与模型是否有效。
+            region_boxes: 分区检测框。
+            known: 已知区域。
+            show_cards: 记牌器已确认历史。
+        """
+        runtime = getattr(self, "automation", None)
+        if runtime is None:
+            return
+        played = {zone["key"]: zone["region"] for zone in settings.PLAYED_ZONES}
+        try:
+            self.automation_status = runtime.process(
+                img if valid else None, valid, region_boxes, known, settings.YOLO_TO_CARD_MAPPING, played,
+                deepcopy(dict(show_cards)), getattr(self.screen_capture, 'last_hwnd', None),
+                getattr(self.screen_capture, 'last_rect', None))
+        except Exception:
+            runtime.coordinator.fail("自动化内部错误，已暂停：" + traceback.format_exc(limit=3))
+            self.automation_status = runtime.status()
+            recorder = getattr(self, 'diagnostics', None)
+            if recorder is not None:
+                recorder.daily.write('automation_failed', error=traceback.format_exc())
+
+    def set_automation_mode(self, mode: object) -> None:
+        """切换观察/自动模式，首次开启时创建运行时并加载 DouZero。
+
+        Args:
+            mode: disabled、observe 或 auto。
+
+        Raises:
+            TypeError: mode 不是字符串。
+            ValueError: 模式未知或配置无效。
+            Exception: 模板/权重加载失败，模式保持原样。
+        """
+        if not isinstance(mode, str):
+            raise TypeError("自动化模式必须是字符串")
+        if getattr(self, "automation", None) is None:
+            if mode == "disabled":
+                self.automation_status = None
+                return
+            from automation.runtime import AutomationRuntime
+
+            self.automation = AutomationRuntime(settings.BASE_DIR, settings.RESOURCE_DIR,
+                                                getattr(self, "automation_stop_event", None), settings.DEVICE_CHOICE)
+        self.automation.set_mode(mode)
+        self.automation_status = self.automation.status()
+        recorder = getattr(self, 'diagnostics', None)
+        if recorder is not None:
+            recorder.daily.write('automation_mode', mode=mode)
+
+    def close_automation(self) -> None:
+        """进程退出时停止热键线程。"""
+        runtime = getattr(self, "automation", None)
+        if runtime is not None:
+            runtime.close()
+
     def reset(self) -> None:
         """重置记牌器和自动布局参照到初始状态。"""
+        runtime = getattr(self, "automation", None)
+        if runtime is not None:
+            runtime.coordinator.reset_round()
         self.tracker.reset()
         self.packed_pipeline = PackedPipeline()
         if isinstance(self.layout_analyzer, AutoLayoutAnalyzer):
@@ -483,6 +565,8 @@ class GameController:
             self.reset()
         elif name == "touch_time":
             self.touch_time()
+        elif name == "set_automation_mode":
+            self.set_automation_mode(payload)
         elif name == "switch_layout":
             if not isinstance(payload, dict) or not isinstance(payload.get("name"), str):
                 raise TypeError("布局命令必须包含名称与完整配置")

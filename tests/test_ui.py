@@ -72,6 +72,23 @@ class UITests(unittest.TestCase):
             self.window.btn_retry.click()
         restart.assert_called_once()
 
+    def test_auto_mode_requires_confirmation_and_failure_turns_it_off(self) -> None:
+        """自动模式未确认不发送命令；服务故障后界面回到关闭。"""
+        from PySide6.QtWidgets import QMessageBox
+
+        self.warning.stop()
+        with patch("ui.main_window.QMessageBox.warning", return_value=QMessageBox.StandardButton.No), \
+                patch.object(self.window.worker, "set_automation_mode") as send:
+            self.window.automation_panel.mode_combo.setCurrentIndex(2)
+        send.assert_not_called()
+        self.assertEqual(self.window.automation_panel.current_mode(), "disabled")
+        self.warning.start()
+        with patch.object(self.window.worker, "set_automation_mode", return_value=5) as send:
+            self.window.automation_panel.mode_combo.setCurrentIndex(1)
+        send.assert_called_once_with("observe")
+        self.window.worker.fail("boom")
+        self.assertEqual(self.window.automation_panel.current_mode(), "disabled")
+
     def test_ready_does_not_override_user_pause(self) -> None:
         """重启成功后尊重用户原有的暂停状态。"""
         self.window.is_paused = True

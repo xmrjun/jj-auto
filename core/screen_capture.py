@@ -34,6 +34,8 @@ class ScreenCapture:
     Attributes:
         window_title: 可选的目标窗口标题（精确匹配）。如果为 None，则后续调用
             `capture_window` 时会因找不到句柄而返回 None。
+        last_hwnd: 最近一次成功截图的窗口句柄，供自动点击校验同一窗口。
+        last_rect: 最近一次成功截图时的窗口屏幕矩形 (left, top, right, bottom)。
     """
 
     def __init__(self, window_title: str | None = None):
@@ -59,6 +61,8 @@ class ScreenCapture:
             pass
 
         self.window_title = window_title
+        self.last_hwnd: int | None = None
+        self.last_rect: tuple[int, int, int, int] | None = None
 
     @staticmethod
     def _release_gdi(
@@ -114,6 +118,7 @@ class ScreenCapture:
         """
 
         _require_win32()
+        self.last_hwnd, self.last_rect = None, None
 
         # 1) 查找目标窗口句柄
         hwnd = win32gui.FindWindow(None, self.window_title)
@@ -164,4 +169,5 @@ class ScreenCapture:
         except Exception as e:
             raise RuntimeError(f"窗口截图失败: {e}") from e
 
+        self.last_hwnd, self.last_rect = int(hwnd), (left, top, right, bot)
         return img

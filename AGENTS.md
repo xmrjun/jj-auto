@@ -75,7 +75,18 @@
 - yolo_ms含本轮全部Ultralytics调用及内部前后处理/回退，GPU同步；主进程整轮另含截图/队列/轮询，子进程performance也不等于物理显示延迟。
 - 运行制品仅在yolo/weights/<目录>/best.onnx或best.engine，并登记于security/model-manifest.json；.pt只允许进入隔离转换流程。训练仓库hey-three/yolo-for-han-card-tracker。一个8:5模型混合原图与两阶段图，按牌局先划分，未启动训练或承诺200ms。
 
-## 9. 验证与提交边界
+## 9. AI 建议与自动操作
+
+- 详见[AI 建议与自动操作](docs/自动操作使用指南.md)。模式 disabled/observe/auto，新进程及重启总为 disabled，不持久化；UI 开启 auto 必须确认；observe 绝不发送输入。
+- 子进程 GameController 持有 automation/runtime.py；首次开启才加载 DouZero。开启时整图识别全部五区；自动化异常只调用 coordinator.fail，不改变 Tracker/计数结果。Tracker 规则不为自动化修改。
+- 协议：set_automation_mode 走 ok/error 回执、不递增代次；Response.automation_status 随检测与命令回执返回。紧急停止为跨进程 multiprocessing.Event，UI 直接置位；F12 热键线程；点击间鼠标被移动即停止。停止后必须用户重新开启。
+- 每个动作：连续 required_frames 帧签名一致 → 历史逐手校验（顺序/牌型/压过/张数）→ 只在合法动作中选 → 按当前帧真实牌框规划 → 点击前核对窗口句柄/矩形/遮挡 → 点击后截图验证（选中集合、张数、按钮消失），不符纠正不超过 max_corrections，超时/矛盾暂停到本局结束。不点击未知按钮；trusteeship/confirm/dialog 只暂停。
+- 角色：首个本家回合 20 张且无人出牌为地主；17 张时下家已出为地主上家，否则上家已出为地主下家。之后每回合每家恰好行动一次，记牌器新出牌即该家动作、无则不出；推算先预览，决策层校验通过才提交。
+- 决策权重只接受清单 format=torch_state_dict 的 .ckpt，torch.load(weights_only=True) 并严格校验参数名。按钮模板与权重均不入库（config/jj_buttons/、douzero/weights/、yolo/weights/ 已 gitignore），scripts/fetch_models.py 是唯一联网步骤且只下载固定提交并校验 SHA-256。
+- third_party/douzero 为 Apache-2.0 原样代码，不套用本文件的 Docstring/注解要求；修改须更新其 NOTICE.md 与 THIRD_PARTY.md。不复制 jjdouzeroAuto 的 GPL 主循环、坐标、点击实现或图片。
+- ultralytics 由 main.py/yolo_inferencer 设置 YOLO_AUTOINSTALL=false、YOLO_OFFLINE=true 并关闭 sync。
+
+## 10. 验证与提交边界
 
 - 回归：python -X faulthandler -B -m unittest discover -s tests -v；doctest见排查文档。常规测试不加载真实模型，Qt offscreen；配置测试仅tests/.tmp，主动销毁窗口/DeferredDelete防跨测试遗留事件。
 - 模型、真实截图、GPU/静态后端、打包与Android需分别验收；不要把单测、真实spawn测试或静态图调用说成完整实战。依赖锁定环境与既有本机验证环境不同。

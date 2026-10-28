@@ -1,0 +1,33 @@
+# 观察/自动模式参数。修改后点击“重启识别”或重新打开程序生效。
+# 自动模式每次启动都默认关闭，不会跨程序启动保持开启。
+
+# DouZero 出牌权重目录：douzero/weights/<目录名>/，由 scripts/fetch_models.py 下载并校验
+douzero_model: resnet
+
+# 执行任何动作前要求的连续一致截图帧数（越大越稳、越慢）
+required_frames: 3
+# 选中的手牌会上移；上移超过牌框高度的该比例视为已选中
+raise_ratio: 0.3
+# 点击后等待画面出现预期变化的秒数，超时即暂停
+verify_timeout: 3.0
+# 选牌结果与计划不符时最多纠正几次，超过即暂停（防止连点出错牌）
+max_corrections: 1
+# 暂停后是否在下一局自动恢复（紧急停止除外，紧急停止必须手动重新开启）
+resume_next_round: true
+# 自动模式下是否点击“继续游戏/再来一局”（需要 continue 按钮模板）
+auto_continue: false
+# 出牌阶段底牌区连续为空多少秒视为本局结束
+round_end_seconds: 3.0
+# 两次点击之间的等待秒数
+click_settle: 0.08
+# 全局紧急停止热键：F1~F12、PAUSE 或 SCROLLLOCK
+stop_hotkey: F12
+# 按钮模板配置文件
+buttons_config: config/jj_buttons.yaml
+
+# 叫分/加倍阈值。手牌强度 = 大王4 + 小王3 + 每张2记2 + 每张A记1 + 每个炸弹4 + 王炸再加2
+bidding:
+  bid_1: 6
+  bid_2: 8
+  bid_3: 10
+  double: 11

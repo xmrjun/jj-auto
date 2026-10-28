@@ -20,8 +20,10 @@ A Windows Dou Dizhu card counter and playing-card detection application built wi
 | 尺度调整 | 初始固定比例，之后按当前单牌检测框学习；画布固定宽768×高480 |
 | 运行反馈 | 暂停、置顶、出牌历史、耗时、实际 YOLO 输入预览及原图/标注图保存 |
 | 推理后端 | 仅加载清单批准且哈希一致的 ONNX/TensorRT 制品，不回退 `.pt` |
+| AI 建议 | DouZero 计算叫分与出牌建议，只显示不点击 |
+| 自动操作 | 确认后自动叫分/选牌/出牌，逐步截图核对，F12/紧急停止/移动鼠标即停；见[AI 建议与自动操作](docs/自动操作使用指南.md) |
 
-当前维护范围是**Windows 斗地主**。本仓库不提供 Android APK、OCR 文字识别方案或其他牌类游戏的完整支持；也不自动操作游戏。不同软件、皮肤和模式需要实际验证。
+当前维护范围是**Windows 斗地主**。本仓库不提供 Android APK、OCR 文字识别方案或其他牌类游戏的完整支持。自动操作默认关闭，未在真实 JJ 客户端上验收，请先用“只给建议”模式核对；使用自动化可能违反游戏平台规则。
 
 ## 下载与版本
 
@@ -34,17 +36,20 @@ A Windows Dou Dizhu card counter and playing-card detection application built wi
 需要 Windows。源码采用 Python 3.10+ 语法；安装还需满足固定依赖的 Python 版本与平台要求。建议先用 Python 3.11/3.12 建立独立环境，完整步骤和限制见[安装说明](docs/使用指南.md#安装依赖)。
 
 ```powershell
-git clone https://github.com/hey-three/han-card-tracker.git
-cd han-card-tracker
+git clone https://github.com/xmrjun/jj-auto.git
+cd jj-auto
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1
 python -m pip install -r requirements.txt
+python scripts/fetch_models.py
 python main.py
 ```
 
-`requirements/base.txt` 是 Mac 开发和 Windows 运行共用依赖，`requirements/windows.txt` 只包含 Windows 截图、输入和打包依赖。基础依赖不再强制安装 CUDA wheel；需要 NVIDIA CUDA 的 Windows 电脑应按 [PyTorch 官方安装说明](https://pytorch.org/get-started/locally/)选择与驱动兼容的 wheel。自动操作仍只会在完成观察模式验收后启用。
+`scripts/fetch_models.py` 从固定提交下载识牌 ONNX 与 DouZero 出牌模型并校验 SHA-256，是唯一联网步骤。
+
+`requirements/base.txt` 是 Mac 开发和 Windows 运行共用依赖，`requirements/windows.txt` 只包含 Windows 截图、输入和打包依赖。基础依赖不再强制安装 CUDA wheel；需要 NVIDIA CUDA 的 Windows 电脑应按 [PyTorch 官方安装说明](https://pytorch.org/get-started/locally/)选择与驱动兼容的 wheel。
 
 首次使用：
 

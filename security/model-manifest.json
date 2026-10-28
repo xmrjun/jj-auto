@@ -29,6 +29,54 @@
       "sha256": "e2419bb59102168fde02324fe6981a583e4300c524645897c967f521605397b7",
       "approved_for_runtime": false,
       "note": "用户提供的未审查样本，仅记录哈希；未复制到仓库。"
+    },
+    {
+      "path": "yolov11n_imgsz_960/best.onnx",
+      "format": "onnx",
+      "sha256": "85e068d799757936be992e695d333d6b6ae78e66fa36b35ca9a4d72e78e8983e",
+      "approved_for_runtime": true,
+      "source": "https://github.com/hey-three/han-card-tracker/blob/d24add3993d1dd86cd679e2920e88349ddcb4875/yolo/weights/yolov11n_imgsz_960/best.onnx",
+      "note": "上游官方 ONNX 导出；与同目录已登记 .pt 来自同一提交。ONNX 不含可执行 pickle。"
+    },
+    {
+      "path": "yolov11s_imgsz_960/best.onnx",
+      "format": "onnx",
+      "sha256": "ead40e45fd21759b00edcc84f6cde610be3a7810efe6be2b24396f54c4d36a41",
+      "approved_for_runtime": true,
+      "source": "https://github.com/hey-three/han-card-tracker/blob/d24add3993d1dd86cd679e2920e88349ddcb4875/yolo/weights/yolov11s_imgsz_960/best.onnx",
+      "note": "上游官方 ONNX 导出；与同目录已登记 .pt 来自同一提交。ONNX 不含可执行 pickle。"
+    },
+    {
+      "path": "yolov11m_imgsz_960/best.onnx",
+      "format": "onnx",
+      "sha256": "fbca91e86082b0dcf9b30deaaa46e9a4df06f0b206f8139a4af20eb09db3d7e2",
+      "approved_for_runtime": true,
+      "source": "https://github.com/hey-three/han-card-tracker/blob/d24add3993d1dd86cd679e2920e88349ddcb4875/yolo/weights/yolov11m_imgsz_960/best.onnx",
+      "note": "上游官方 ONNX 导出；与同目录已登记 .pt 来自同一提交。ONNX 不含可执行 pickle。"
+    },
+    {
+      "path": "resnet/resnet_landlord.ckpt",
+      "format": "torch_state_dict",
+      "sha256": "b025086cbe0df8b14c4eade9bae5e135b48d9da8568e049c173da08f8c047050",
+      "approved_for_runtime": true,
+      "source": "https://github.com/pumpkinjw/jjdouzeroAuto/blob/de818a607d3ee9070b6256fd51d23a6ccf1f2414/Auto_JJ2/baselines/resnet/resnet_landlord.ckpt",
+      "note": "DouZero ResNet 出牌权重。已用 pickletools 静态检查仅含 OrderedDict/张量重建；运行时以 weights_only=True 读取。"
+    },
+    {
+      "path": "resnet/resnet_landlord_down.ckpt",
+      "format": "torch_state_dict",
+      "sha256": "9de5bbff31849d26508da8972d430782cbff942db258bb20ca8286af82571c40",
+      "approved_for_runtime": true,
+      "source": "https://github.com/pumpkinjw/jjdouzeroAuto/blob/de818a607d3ee9070b6256fd51d23a6ccf1f2414/Auto_JJ2/baselines/resnet/resnet_landlord_down.ckpt",
+      "note": "DouZero ResNet 出牌权重。已用 pickletools 静态检查仅含 OrderedDict/张量重建；运行时以 weights_only=True 读取。"
+    },
+    {
+      "path": "resnet/resnet_landlord_up.ckpt",
+      "format": "torch_state_dict",
+      "sha256": "2d577f0915d5f9988675e1318789d9f6321c990a84f0aca4a74176bcc79cf87b",
+      "approved_for_runtime": true,
+      "source": "https://github.com/pumpkinjw/jjdouzeroAuto/blob/de818a607d3ee9070b6256fd51d23a6ccf1f2414/Auto_JJ2/baselines/resnet/resnet_landlord_up.ckpt",
+      "note": "DouZero ResNet 出牌权重。已用 pickletools 静态检查仅含 OrderedDict/张量重建；运行时以 weights_only=True 读取。"
     }
   ]
 }

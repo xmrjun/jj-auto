@@ -5,6 +5,7 @@
 | 你想了解什么 | 文档 | 对应代码 |
 |---|---|---|
 | 安装、启动、选择窗口、常见操作 | [使用指南](使用指南.md) | main.py、ui/ |
+| AI 出牌建议、自动叫分出牌、按钮模板、紧急停止 | [AI 建议与自动操作](自动操作使用指南.md) | automation/、decision/、third_party/douzero |
 | 可调参数与配置保存 | [配置参考](配置参考.md) | config/settings.py、config/store.py |
 | 一帧如何从截图走到计数 | [架构与数据流](架构与数据流.md) | core/game_controller.py、推理进程协议 |
 | 开局、扣牌、结束与保留历史 | [斗地主记牌设计](斗地主记牌设计说明.md) | core/games/doudizhu.py、base_tracker.py |

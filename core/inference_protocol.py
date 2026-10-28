@@ -38,6 +38,7 @@ class Response:
         screenshot_regions: 自动布局当前确认的牌区边界，使用归一化坐标。
         performance: 当前子进程分阶段耗时和调用次数，不包含图片或物理显示时刻。
         diagnostic_status: 独立的保存状态与积压/失败信息，不驱动牌局。
+        automation_status: 观察/自动模式的阶段、建议与暂停原因；关闭时为 None。
     """
 
     status: Literal["ready", "ok", "error", "fatal", "diagnostic"]
@@ -52,3 +53,4 @@ class Response:
     screenshot_regions: dict[str, tuple[float, float, float, float]] | None = None
     performance: dict[str, float] | None = None
     diagnostic_status: dict[str, object] | None = None
+    automation_status: dict[str, object] | None = None

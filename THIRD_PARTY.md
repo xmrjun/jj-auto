@@ -25,15 +25,31 @@
 
 运行时不得自动加载或回退到这些文件。只有在来源和许可证核验后，才能在隔离环境中转换成经过哈希登记的 ONNX 资产。
 
+## 已批准的运行模型（不入库，由 scripts/fetch_models.py 下载并校验）
+
+| 文件 | 来源（固定提交） | SHA-256 |
+|---|---|---|
+| `yolov11n_imgsz_960/best.onnx` | hey-three/han-card-tracker@`d24add3` | `85e068d7…e8983e` |
+| `yolov11s_imgsz_960/best.onnx` | 同上 | `ead40e45…d36a41` |
+| `yolov11m_imgsz_960/best.onnx` | 同上 | `fbca91e8…3d7e2` |
+| `resnet/resnet_landlord.ckpt` | pumpkinjw/jjdouzeroAuto@`de818a6` Auto_JJ2/baselines/resnet | `b025086c…047050` |
+| `resnet/resnet_landlord_down.ckpt` | 同上 | `9de5bbff…571c40` |
+| `resnet/resnet_landlord_up.ckpt` | 同上 | `2d577f09…f87b` |
+
+完整哈希见 `security/model-manifest.json`。三个 ONNX 与上表未批准 `.pt` 来自同一上游提交（`.pt` 哈希一致），ONNX 不含可执行 pickle。三个 `.ckpt` 用 `pickletools` 静态检查，只引用 `collections.OrderedDict`、`torch._utils._rebuild_tensor_v2` 与张量存储类型；运行时仍强制 `torch.load(weights_only=True)`，并以严格参数名/形状载入网络。ResNet 权重随 jjdouzeroAuto 的 `Auto_JJ2/LICENSE`（Apache-2.0）发布，其训练来源为 Douzero_Resnet 系列；jjdouzeroAuto 顶层为 GPL-3.0，本项目不分发这些权重，只在使用者本机下载。
+
 ## jjdouzeroAuto
 
-- 参考仓库：<https://github.com/pumpkinjw/jjdouzeroAuto>
-- 用途：仅用于理解旧版 JJ 界面自动化行为
-- 导入策略：不复制其主循环、模板图片、权重或窗口点击实现
+- 参考仓库：<https://github.com/pumpkinjw/jjdouzeroAuto>（核对提交 `de818a607d3ee9070b6256fd51d23a6ccf1f2414`）
+- 用途：理解 JJ 界面按钮与流程；不复制其 GPL-3.0 主循环、硬编码坐标、窗口点击实现或图片。
+- 引入的代码：仅 `Auto_JJ2/douzero` 中随 Apache-2.0 LICENSE 发布的 ResNet 特征编码 `_get_obs_resnet` 及历史编码、`BasicBlock`/`ResnetModel` 网络定义，见 `third_party/douzero/encoding.py`、`models.py` 文件头。
+- 按钮图片：`utils/button_templates.py import-jjdouzero` 只在使用者本机从其自己的克隆复制到被忽略的 `config/jj_buttons/`，不进入本仓库。
 
 ## DouZero
 
-- 计划上游：<https://github.com/kwai/DouZero>
-- 许可证：Apache-2.0
-- 当前状态：尚未导入；实际导入时必须补充准确提交、许可证和修改记录
+- 上游：<https://github.com/kwai/DouZero>，提交 `718a5c920bf3361e34178a38f3b80458e176b351`
+- 许可证：Apache-2.0，副本见 `third_party/douzero/LICENSE`
+- 引入：`utils.py`、`move_generator.py`、`move_detector.py`、`move_selector.py`（只改导入路径并加来源说明）；`env.py` 中的 `get_obs` 及其辅助函数、`dmc/models.py` 中的 `LandlordLstmModel`/`FarmerLstmModel`（原样，删除 Env/训练包装类）。修改记录见各文件头与 `third_party/douzero/NOTICE.md`。
+- `decision/rules.py` 的合法动作生成按 DouZero `GameEnv.get_legal_card_play_actions` 的规则重写。
+- 原版 LSTM 权重需使用者从 DouZero README 所列网盘自行下载并登记哈希后才能使用。
 

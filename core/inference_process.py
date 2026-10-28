@@ -10,6 +10,7 @@ import queue
 
 from PySide6.QtCore import QObject, QTimer, Signal, Slot
 
+from automation.emergency_stop import EventLike
 from config import settings
 from core.controller_process import run_controller_loop
 from core.inference_protocol import Command, Response
@@ -28,6 +29,7 @@ class InferenceWorker(QObject):
         screenshot_ready: 当前截图 JPEG 数据及自动布局返回的区域边界。
         performance_ready: 当前代次的分阶段耗时，不含图像。
         diagnostic_status_changed: 保存线程的纯数据状态，不能解锁检测。
+        automation_status_changed: 当前代次的观察/自动模式状态。
         state: 当前生命周期状态。
     """
 
@@ -40,6 +42,7 @@ class InferenceWorker(QObject):
     screenshot_ready = Signal(bytes, dict)
     performance_ready = Signal(dict)
     diagnostic_status_changed = Signal(dict)
+    automation_status_changed = Signal(dict)
 
     def __init__(self, layout_name: str, game_name: str = "doudizhu", parent: QObject | None = None) -> None:
         """创建服务，启动前不分配跨进程资源。
@@ -58,6 +61,7 @@ class InferenceWorker(QObject):
         self._pending: dict[int, Command] = {}
         self._next_id = 0
         self._generation = 0
+        self._stop_event: EventLike | None = None
         self.state = "stopped"
         self._poll_timer = QTimer(self)
         self._poll_timer.setInterval(20)
@@ -85,10 +89,12 @@ class InferenceWorker(QObject):
         try:
             self._cmd_queue = mp.Queue()
             self._result_queue = mp.Queue()
+            # 新进程总以关闭的自动化启动；停止事件跨进程共享，UI 可绕过命令队列直接置位。
+            self._stop_event = mp.Event()
             self._process = mp.Process(
                 target=run_controller_loop,
                 args=(self._cmd_queue, self._result_queue, self._layout_name,
-                      self._game_name, settings.runtime_snapshot()),
+                      self._game_name, settings.runtime_snapshot(), self._stop_event),
                 daemon=True,
             )
             self._process.start()
@@ -254,6 +260,30 @@ class InferenceWorker(QObject):
         """
         return self._submit("update_settings", dict(updates), invalidate=True)
 
+    def set_automation_mode(self, mode: str) -> int | None:
+        """提交观察/自动模式切换；开启自动前清除紧急停止标志。
+
+        Args:
+            mode: disabled、observe 或 auto。
+
+        Returns:
+            请求编号，服务不可用时为 None。
+
+        Raises:
+            ValueError: 模式未知。
+        """
+        if mode not in ("disabled", "observe", "auto"):
+            raise ValueError(f"未知自动化模式: {mode}")
+        if mode == "auto" and self._stop_event is not None:
+            self._stop_event.clear()
+        return self._submit("set_automation_mode", mode)
+
+    def emergency_stop(self) -> None:
+        """立即置位共享停止标志，并请求子进程关闭自动化；不等待回执。"""
+        if self._stop_event is not None:
+            self._stop_event.set()
+        self._submit("set_automation_mode", "disabled")
+
     def touch_time(self) -> None:
         """排入时间刷新，避免暂停或设置关闭后立即超时。"""
         self._submit("touch_time")
@@ -308,11 +338,15 @@ class InferenceWorker(QObject):
                             )
                         if response.performance is not None:
                             self.performance_ready.emit(response.performance)
+                        if response.automation_status is not None:
+                            self.automation_status_changed.emit(response.automation_status)
                         self.result_ready.emit(response.remain_cards or {}, response.zone_cards or {}, response.yolo_ms)
                     else:
                         self.error.emit(response.error)
                 self.finished.emit()
             else:
+                if response.automation_status is not None:
+                    self.automation_status_changed.emit(response.automation_status)
                 self.command_completed.emit(
                     command.request_id, command.name, response.status == "ok", response.error,
                 )

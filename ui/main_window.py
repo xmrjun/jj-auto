@@ -20,6 +20,7 @@ from ui.layout_editor_dialog import LayoutEditorDialog
 from ui.settings_dialog import SettingsDialog
 from ui.settings_controller import SettingsController
 from ui.screenshot_preview import ScreenshotPreviewDialog
+from ui.automation_panel import AutomationPanel
 from utils.layout_editor.service import list_visible_window_titles
 import config.settings as settings
 import time
@@ -171,6 +172,13 @@ class CardUI(QMainWindow):
         # 根据设置决定是否显示玩家所出的牌
         self._update_played_cards_visibility()
 
+        # 观察/自动模式控件：每次启动都为关闭，不持久化
+        self.automation_panel = AutomationPanel(self)
+        self.automation_panel.mode_requested.connect(self.on_automation_mode_requested)
+        self.automation_panel.stop_requested.connect(self.on_emergency_stop)
+        self.root_layout.addWidget(self.automation_panel)
+        self._automation_request: tuple[int, str] | None = None
+
         # -------------------------
         # 保存 label 引用：后续更新用（保持你原逻辑）
         # name_labels：牌名 QLabel
@@ -223,6 +231,8 @@ class CardUI(QMainWindow):
         self.worker.diagnostic_status_changed.connect(self.on_diagnostic_status)
         self.worker.error.connect(self.on_worker_error)
         self.worker.screenshot_ready.connect(self.on_screenshot_ready)
+        self.worker.automation_status_changed.connect(self.on_automation_status)
+        self.worker.command_completed.connect(self._on_automation_command_completed)
         self._screenshot_preview: ScreenshotPreviewDialog | None = None
         self._preview_requested = settings.SHOW_CURRENT_SCREENSHOT
         self._diagnostic_status: dict[str, object] = {}
@@ -530,6 +540,70 @@ class CardUI(QMainWindow):
             self.btn_pause.setText("恢复")
             self.is_paused = True
             print("检测已暂停")
+
+    @Slot(str)
+    def on_automation_mode_requested(self, mode: str) -> None:
+        """用户切换 AI 模式；自动模式需要明确确认。
+
+        Args:
+            mode: disabled、observe 或 auto。
+        """
+        previous = self._automation_request[1] if self._automation_request else "disabled"
+        if mode == "auto":
+            answer = QMessageBox.warning(
+                self, "开启自动操作",
+                "自动操作会移动鼠标并点击 JJ 窗口，代你叫分和出牌。\n\n"
+                "· 请先用“只给建议”模式确认识别和建议都正确；\n"
+                "· 记牌器窗口不要挡住 JJ 窗口（被遮挡时不会点击）；\n"
+                "· 随时可按紧急停止热键（默认 F12）或点“紧急停止”，移动鼠标也会停止；\n"
+                "· 使用自动化可能违反游戏平台规则，账号风险由你自行承担。\n\n确定开启？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if answer != QMessageBox.StandardButton.Yes:
+                self.automation_panel.set_mode(previous)
+                return
+        request_id = self.worker.set_automation_mode(mode)
+        if request_id is None:
+            self.automation_panel.set_mode("disabled")
+            QMessageBox.information(self, "AI 模式", "识别服务尚未就绪，请稍后再试。")
+            return
+        self._automation_request = (request_id, mode)
+
+    @Slot(int, str, bool, str)
+    def _on_automation_command_completed(self, request_id: int, name: str, success: bool, error: str) -> None:
+        """模式切换失败时恢复为关闭并提示原因。
+
+        Args:
+            request_id: 请求编号。
+            name: 命令名。
+            success: 是否成功。
+            error: 失败详情。
+        """
+        if name != "set_automation_mode" or success:
+            return
+        self._automation_request = None
+        self.automation_panel.set_mode("disabled")
+        if not self._closing:
+            detail = error.strip().splitlines()[-1] if error.strip() else "未知错误"
+            QMessageBox.warning(self, "AI 模式未开启",
+                                "开启失败，请确认已运行 scripts/fetch_models.py 下载并校验模型。\n\n" + detail)
+
+    @Slot(dict)
+    def on_automation_status(self, status: dict) -> None:
+        """显示自动化状态。
+
+        Args:
+            status: 后端状态字典。
+        """
+        self.automation_panel.show_status(status)
+        if status.get("mode") == "disabled":
+            self._automation_request = None
+
+    @Slot()
+    def on_emergency_stop(self) -> None:
+        """立即置位共享停止标志并关闭自动化。"""
+        self.worker.emergency_stop()
+        self._automation_request = None
+        self.automation_panel.set_mode("disabled")
 
     def _load_layout_options(self):
         """
@@ -1023,6 +1097,10 @@ class CardUI(QMainWindow):
         """
         self._busy = False
         self.btn_retry.setVisible(state == "failed")
+        if state != "ready":
+            # 新进程总以关闭的自动化启动，界面同步回关闭，绝不自动恢复自动模式。
+            self._automation_request = None
+            self.automation_panel.set_mode("disabled")
         self._status_error = ""
         self._layout_status = ""
         if state == "ready":
@@ -1092,6 +1170,8 @@ class CardUI(QMainWindow):
         - 停止子进程
         """
         self._closing = True
+        if hasattr(self, 'worker'):
+            self.worker.emergency_stop()
         if self._screenshot_preview is not None:
             self._screenshot_preview.hide()
         self.timer.stop()

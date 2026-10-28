@@ -11,6 +11,7 @@ DEFAULT_MANIFEST_PATH = (
     Path(__file__).resolve().parents[1] / "security" / "model-manifest.json"
 )
 RUNTIME_FORMATS = frozenset({"onnx", "engine"})
+DECISION_FORMAT = "torch_state_dict"
 
 
 class ModelAssetError(RuntimeError):
@@ -143,3 +144,51 @@ def resolve_runtime_model(
         raise ModelManifestError("批准的模型缺少 SHA-256")
     actual_hash = verify_model(requested, expected_hash)
     return RuntimeModel(requested.resolve(), model_format, actual_hash)
+
+
+def resolve_decision_model(
+    requested_path: str | Path,
+    *,
+    manifest: Mapping[str, object] | None = None,
+) -> RuntimeModel:
+    """只解析清单批准的 DouZero 张量状态字典（.ckpt）。
+
+    决策权重格式记为 ``torch_state_dict``，调用方必须以
+    ``torch.load(weights_only=True)`` 读取，禁止执行任意 pickle 对象。
+
+    Args:
+        requested_path: 权重文件路径。
+        manifest: 测试注入的清单；省略时读取默认清单。
+
+    Returns:
+        已通过格式、批准与哈希校验的权重。
+
+    Raises:
+        UnsafeModelFormatError: 扩展名不是 .ckpt。
+        ModelManifestError: 清单结构或格式字段无效。
+        UnapprovedModelError: 未在清单中批准。
+        ModelIntegrityError: 哈希不一致。
+        FileNotFoundError: 文件不存在。
+    """
+    requested = Path(requested_path)
+    if requested.suffix.lower() != ".ckpt":
+        raise UnsafeModelFormatError(f"决策模型只允许清单批准的 .ckpt 状态字典: {requested.name}")
+    payload: Mapping[str, object] = load_model_manifest() if manifest is None else manifest
+    artifacts = payload.get("artifacts")
+    if payload.get("schema_version") != 1 or not isinstance(artifacts, list):
+        raise ModelManifestError("模型清单结构无效")
+    matching: Mapping[str, object] | None = None
+    for candidate in artifacts:
+        if not isinstance(candidate, Mapping):
+            raise ModelManifestError("模型清单 artifact 必须是对象")
+        if (candidate.get("format") == DECISION_FORMAT
+                and _matches_manifest_path(requested, candidate.get("path"))):
+            matching = candidate
+            break
+    if matching is None or matching.get("approved_for_runtime") is not True:
+        raise UnapprovedModelError(f"决策模型未获准用于运行: {requested.name}")
+    expected_hash = matching.get("sha256")
+    if not isinstance(expected_hash, str):
+        raise ModelManifestError("批准的决策模型缺少 SHA-256")
+    actual_hash = verify_model(requested, expected_hash)
+    return RuntimeModel(requested.resolve(), DECISION_FORMAT, actual_hash)

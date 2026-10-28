@@ -14,7 +14,7 @@
 - A fixed 768×480 canvas, overlap-aware coordinate restoration and duplicate removal.
 - Pause/resume, always-on-top UI, play history, timing, actual YOLO input preview, and paired original/annotated screenshots.
 
-This repository currently maintains the **Windows Dou Dizhu application**. It does not ship an Android APK, use OCR for rank recognition, or implement other card games. It does not control the game. Compatibility and accuracy must be checked for each interface and skin.
+This repository currently maintains the **Windows Dou Dizhu application**. It does not ship an Android APK, use OCR for rank recognition, or implement other card games. An optional AI mode (off by default) shows DouZero bid/play suggestions, and with explicit confirmation can bid and play automatically with post-click screen verification and an F12 / button / mouse-move emergency stop; it has not been accepted against a live JJ client yet — see [AI suggestions and automation](docs/自动操作使用指南.md). Automating games may violate platform rules. Compatibility and accuracy must be checked for each interface and skin.
 
 ## Source installation
 

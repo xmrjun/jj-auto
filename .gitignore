@@ -17,3 +17,8 @@ config/config.local.yaml
 *.ckpt
 
 
+
+# 本地运行资产（由 scripts/fetch_models.py 与按钮模板工具生成，不入库）
+douzero/weights/
+yolo/weights/
+config/jj_buttons/

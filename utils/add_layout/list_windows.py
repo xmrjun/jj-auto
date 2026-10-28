@@ -1,4 +1,7 @@
-import win32gui
+try:
+    import win32gui
+except ImportError:  # pragma: no cover - Windows CI 覆盖真实 Win32 路径
+    win32gui = None
 
 def enum_windows_callback(hwnd, windows):
     if win32gui.IsWindowVisible(hwnd):
@@ -7,6 +10,9 @@ def enum_windows_callback(hwnd, windows):
             windows.append(title)
 
 def get_all_window_titles():
+    if win32gui is None:
+        raise RuntimeError("窗口枚举仅支持 Windows，且需要安装 pywin32")
+
     windows = []
     win32gui.EnumWindows(enum_windows_callback, windows)
     return windows

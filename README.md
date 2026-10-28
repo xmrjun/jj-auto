@@ -39,12 +39,12 @@ cd han-card-tracker
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+python -m pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1
 python -m pip install -r requirements.txt
 python main.py
 ```
 
-`requirements.txt` 固定了 CUDA 12.1 版 PyTorch，不能假定任意 Python 或仅用默认包索引都可安装。上述安装路径遵循 [PyTorch 官方旧版本说明](https://pytorch.org/get-started/previous-versions/)，本次文档维护没有重做全新环境安装或升级依赖。
+`requirements/base.txt` 是 Mac 开发和 Windows 运行共用依赖，`requirements/windows.txt` 只包含 Windows 截图、输入和打包依赖。基础依赖不再强制安装 CUDA wheel；需要 NVIDIA CUDA 的 Windows 电脑应按 [PyTorch 官方安装说明](https://pytorch.org/get-started/locally/)选择与驱动兼容的 wheel。自动操作仍只会在完成观察模式验收后启用。
 
 首次使用：
 

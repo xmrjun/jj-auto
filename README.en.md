@@ -26,12 +26,12 @@ cd han-card-tracker
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu121
+python -m pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1
 python -m pip install -r requirements.txt
 python main.py
 ```
 
-The dependency file pins CUDA 12.1 PyTorch wheels. Follow the [official PyTorch instructions](https://pytorch.org/get-started/previous-versions/) rather than assuming the default index or any Python version will work. [Installation details](docs/使用指南.md) are maintained in Chinese.
+`requirements/base.txt` is shared by Mac development and Windows runtime, while `requirements/windows.txt` contains Windows-only capture, input, and packaging dependencies. The base set no longer forces a CUDA wheel. On an NVIDIA Windows machine, select the wheel matching the installed driver from the [official PyTorch installer](https://pytorch.org/get-started/locally/). [Installation details](docs/使用指南.md) are maintained in Chinese.
 
 Weights are stored in `yolo/weights/<model-name>/best.pt`. Custom models must preserve the configured class mapping. The [training project](https://github.com/hey-three/yolo-for-han-card-tracker) is maintained separately.
 

@@ -10,10 +10,22 @@ Windows 平台有效（依赖 win32gui/win32ui/win32con）。
 """
 
 import ctypes
-import win32con
-import win32gui
-import win32ui
 from PIL import Image
+
+try:
+    import win32con
+    import win32gui
+    import win32ui
+except ImportError:  # pragma: no cover - Windows CI 覆盖真实 Win32 路径
+    win32con = None
+    win32gui = None
+    win32ui = None
+
+
+def _require_win32() -> None:
+    """确保当前环境具备 Windows 截图依赖。"""
+    if win32con is None or win32gui is None or win32ui is None:
+        raise RuntimeError("窗口截图仅支持 Windows，且需要安装 pywin32")
 
 
 class ScreenCapture:
@@ -100,6 +112,8 @@ class ScreenCapture:
             >>> isinstance(img, Image.Image) or img is None
             True
         """
+
+        _require_win32()
 
         # 1) 查找目标窗口句柄
         hwnd = win32gui.FindWindow(None, self.window_title)

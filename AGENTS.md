@@ -71,9 +71,9 @@
 - diagnostic_status含当前预算、待写字节与跳过数；独立Response状态diagnostic携带diagnostic_status，不回执或解锁检测；异步状态含单调时间戳，UI拒绝旧通知。暂停警告不随show_layout_status隐藏，后台实际状态不能与保存的开关混淆。
 - 详见[诊断记录](docs/诊断记录.md)。关闭最多等待250ms，退出最多1秒；超时不宣称完整；暂未实现一键导出/自动回放；会话跨多局但每局独立子目录，冻结round_id随帧保存；开局边界最多128条元数据按帧序由写线程处理，即使跳过全部图帧也建局标记。GameController._sync_diagnostic_round只观察业务状态转换，不改Tracker规则。清理按所设总额度触发，记录retention_cleanup和pruned_rounds，清理后complete为false。额度改变只在后台下次检查执行；已暂停需关闭重开。
 - 已移除同步图片保存模块及其构造参数、开关、白名单与旧YAML键；YoloInferencer只推理，Tracker只记牌。已有本地历史图片不自动删除。
-- 动态/PT明确请求(H,W)=(480,768)；静态ONNX/TensorRT尊重导出尺寸，首帧直接拼图也不能污染后续输入。CPU优先ONNX，CUDA优先TensorRT FP16，再回退PyTorch；不自动因拼图改权重或重新导出形状。
+- 动态测试后端明确请求(H,W)=(480,768)；正式静态ONNX/TensorRT尊重导出尺寸，首帧直接拼图也不能污染后续输入。运行时只加载清单批准且SHA-256一致的ONNX/TensorRT制品，不回退PyTorch，也不在运行进程导出模型。
 - yolo_ms含本轮全部Ultralytics调用及内部前后处理/回退，GPU同步；主进程整轮另含截图/队列/轮询，子进程performance也不等于物理显示延迟。
-- 权重仅在yolo/weights/<目录>/best.pt；训练仓库hey-three/yolo-for-han-card-tracker。一个8:5模型混合原图与两阶段图，按牌局先划分，未启动训练或承诺200ms。
+- 运行制品仅在yolo/weights/<目录>/best.onnx或best.engine，并登记于security/model-manifest.json；.pt只允许进入隔离转换流程。训练仓库hey-three/yolo-for-han-card-tracker。一个8:5模型混合原图与两阶段图，按牌局先划分，未启动训练或承诺200ms。
 
 ## 9. 验证与提交边界
 

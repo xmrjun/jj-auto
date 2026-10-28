@@ -19,7 +19,7 @@ A Windows Dou Dizhu card counter and playing-card detection application built wi
 | 拼图推理 | 开局前底牌＋手牌，扣手牌后底牌＋三家出牌；严格框内裁剪 |
 | 尺度调整 | 初始固定比例，之后按当前单牌检测框学习；画布固定宽768×高480 |
 | 运行反馈 | 暂停、置顶、出牌历史、耗时、实际 YOLO 输入预览及原图/标注图保存 |
-| 推理后端 | CPU 优先 ONNX Runtime；CUDA 优先 TensorRT，失败可回退 PyTorch |
+| 推理后端 | 仅加载清单批准且哈希一致的 ONNX/TensorRT 制品，不回退 `.pt` |
 
 当前维护范围是**Windows 斗地主**。本仓库不提供 Android APK、OCR 文字识别方案或其他牌类游戏的完整支持；也不自动操作游戏。不同软件、皮肤和模式需要实际验证。
 

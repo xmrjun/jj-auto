@@ -1,2 +1,19 @@
 .worktrees/
 
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+venv/
+tests/.tmp/
+diagnostics/
+logs/
+config/config.local.yaml
+*.engine
+*.onnx
+*.pt
+*.pth
+*.pkl
+*.ckpt
+
+
